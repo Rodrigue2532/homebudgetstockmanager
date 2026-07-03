@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { supabase, APP_STATE_ID } from "./supabaseClient";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area,
@@ -344,6 +345,56 @@ export default function App() {
     setToast(msg);
     setTimeout(() => setToast(null), 2600);
   }, []);
+
+  /* ---------- Persistance Supabase ---------- */
+
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [syncStatus, setSyncStatus] = useState("idle"); // idle | syncing | error
+  const saveTimeout = useRef(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadData() {
+      try {
+        const { data, error } = await supabase
+          .from("app_state")
+          .select("data")
+          .eq("id", APP_STATE_ID)
+          .maybeSingle();
+        if (!cancelled && !error && data && data.data) {
+          const d = data.data;
+          if (d.transactions) setTransactions(d.transactions);
+          if (d.budgets) setBudgets(d.budgets);
+          if (d.products) setProducts(d.products);
+          if (d.movements) setMovements(d.movements);
+          if (d.recurring) setRecurring(d.recurring);
+          if (d.shoppingExtra) setShoppingExtra(d.shoppingExtra);
+          if (d.shoppingChecked) setShoppingChecked(d.shoppingChecked);
+        }
+      } catch (e) {
+        console.error("Erreur de chargement Supabase:", e);
+      } finally {
+        if (!cancelled) setDataLoaded(true);
+      }
+    }
+    loadData();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!dataLoaded) return;
+    if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    setSyncStatus("syncing");
+    saveTimeout.current = setTimeout(async () => {
+      const payload = { transactions, budgets, products, movements, recurring, shoppingExtra, shoppingChecked };
+      const { error } = await supabase
+        .from("app_state")
+        .upsert({ id: APP_STATE_ID, data: payload, updated_at: new Date().toISOString() });
+      setSyncStatus(error ? "error" : "idle");
+      if (error) console.error("Erreur de sauvegarde Supabase:", error);
+    }, 900);
+    return () => clearTimeout(saveTimeout.current);
+  }, [transactions, budgets, products, movements, recurring, shoppingExtra, shoppingChecked, dataLoaded]);
 
   /* ---------- Calculs dérivés ---------- */
 
