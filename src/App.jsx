@@ -18,7 +18,7 @@ import {
    CONSTANTES & DONNÉES DE RÉFÉRENCE
 ============================================================================ */
 
-const INITIAL_BALANCE = 38500;
+const INITIAL_BALANCE = 0;
 
 const CATEGORY_META = {
   "Alimentation": { color: "#F59E0B", icon: UtensilsCrossed },
@@ -54,33 +54,13 @@ const STOCK_CATEGORY_META = {
 };
 
 const INITIAL_BUDGETS = {
-  "Alimentation": 18000, "Bébés": 9000, "Maison": 7000, "Transport": 6000,
-  "Personnels": 14000, "Santé": 4000, "Loisirs": 3000, "Divers": 2500, "Economie": 10000,
+  "Alimentation": 0, "Bébés": 0, "Maison": 0, "Transport": 0,
+  "Personnels": 0, "Santé": 0, "Loisirs": 0, "Divers": 0, "Economie": 0,
 };
 
-const INITIAL_PRODUCTS = [
-  { id: "p1", name: "Couches taille 2", category: "Bébé", unit: "paquet", currentStock: 2, minStock: 3, avgPrice: 450 },
-  { id: "p2", name: "Lait infantile", category: "Bébé", unit: "boîte", currentStock: 4, minStock: 2, avgPrice: 980 },
-  { id: "p3", name: "Lingettes bébé", category: "Bébé", unit: "paquet", currentStock: 5, minStock: 3, avgPrice: 180 },
-  { id: "p4", name: "Céréales bébé", category: "Bébé", unit: "boîte", currentStock: 3, minStock: 2, avgPrice: 320 },
-  { id: "p5", name: "Liquide vaisselle", category: "Entretien", unit: "bouteille", currentStock: 1, minStock: 2, avgPrice: 120 },
-  { id: "p6", name: "Lessive", category: "Entretien", unit: "paquet", currentStock: 2, minStock: 2, avgPrice: 350 },
-  { id: "p7", name: "Savon de Marseille", category: "Hygiène", unit: "unité", currentStock: 6, minStock: 3, avgPrice: 45 },
-  { id: "p8", name: "Dentifrice", category: "Hygiène", unit: "tube", currentStock: 3, minStock: 2, avgPrice: 95 },
-  { id: "p9", name: "Shampooing", category: "Hygiène", unit: "bouteille", currentStock: 2, minStock: 2, avgPrice: 210 },
-  { id: "p10", name: "Papier toilette", category: "Maison", unit: "pack (6)", currentStock: 4, minStock: 3, avgPrice: 260 },
-  { id: "p11", name: "Riz", category: "Alimentation", unit: "kg", currentStock: 12, minStock: 5, avgPrice: 55 },
-  { id: "p12", name: "Sucre", category: "Alimentation", unit: "kg", currentStock: 6, minStock: 3, avgPrice: 48 },
-  { id: "p13", name: "Huile", category: "Alimentation", unit: "litre", currentStock: 3, minStock: 2, avgPrice: 165 },
-  { id: "p14", name: "Café", category: "Alimentation", unit: "paquet", currentStock: 1, minStock: 1, avgPrice: 210 },
-];
+const INITIAL_PRODUCTS = [];
 
-const INITIAL_RECURRING = [
-  { id: "r1", label: "Salaire nounou 1", amount: 7000, category: "Personnels", dueDay: 28, paidMonths: ["2026-04", "2026-05"] },
-  { id: "r2", label: "Salaire nounou 2", amount: 6500, category: "Personnels", dueDay: 28, paidMonths: ["2026-04", "2026-05"] },
-  { id: "r3", label: "Loyer", amount: 14000, category: "Maison", dueDay: 5, paidMonths: ["2026-04", "2026-05", "2026-06"] },
-  { id: "r4", label: "Internet & téléphone", amount: 2200, category: "Maison", dueDay: 10, paidMonths: ["2026-04", "2026-05", "2026-06"] },
-];
+const INITIAL_RECURRING = [];
 
 function genTransactions() {
   const rows = [];
@@ -166,8 +146,8 @@ function genMovements() {
   return rows;
 }
 
-const INITIAL_TRANSACTIONS = genTransactions();
-const INITIAL_MOVEMENTS = genMovements();
+const INITIAL_TRANSACTIONS = [];
+const INITIAL_MOVEMENTS = [];
 const CURRENT_MONTH = "2026-06";
 
 const MONTH_LABELS = {
@@ -333,7 +313,7 @@ export default function App() {
   const [products, setProducts] = useState(INITIAL_PRODUCTS);
   const [movements, setMovements] = useState(INITIAL_MOVEMENTS);
   const [recurring, setRecurring] = useState(INITIAL_RECURRING);
-  const [shoppingExtra, setShoppingExtra] = useState([{ id: "s1", name: "Sac de courses réutilisable", checked: false }]);
+  const [shoppingExtra, setShoppingExtra] = useState([]);
   const [shoppingChecked, setShoppingChecked] = useState({});
 
   const [modal, setModal] = useState(null);
@@ -378,7 +358,20 @@ export default function App() {
       }
     }
     loadData();
-    return () => { cancelled = true; };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        loadData();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", loadData);
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", loadData);
+    };
   }, []);
 
   useEffect(() => {
@@ -1648,7 +1641,7 @@ function TransactionModal({ theme, onClose, onSubmit }) {
     if (!amount || Number(amount) <= 0) return;
     onSubmit({
       type, date, category,
-      subcategory: isRevenu ? "" : subcategory,
+      subcategory: "",
       amount: Number(amount),
       comment: isRevenu ? `Revenu de ${contributor}` : (comment || category),
       contributor: isRevenu ? contributor : null,
@@ -1687,15 +1680,10 @@ function TransactionModal({ theme, onClose, onSubmit }) {
         </Field>
       )}
 
-      <Field label="Catégorie">
-        <select value={category} onChange={(e) => { setCategory(e.target.value); setSubcategory(SUBCATEGORIES[e.target.value][0]); }} className={inputCls(theme)}>
-          {CATEGORY_LIST.map((c) => <option key={c}>{c}</option>)}
-        </select>
-      </Field>
       {!isRevenu && (
-        <Field label="Sous-catégorie">
-          <select value={subcategory} onChange={(e) => setSubcategory(e.target.value)} className={inputCls(theme)}>
-            {subs.map((s) => <option key={s}>{s}</option>)}
+        <Field label="Catégorie">
+          <select value={category} onChange={(e) => { setCategory(e.target.value); setSubcategory(SUBCATEGORIES[e.target.value][0]); }} className={inputCls(theme)}>
+            {CATEGORY_LIST.map((c) => <option key={c}>{c}</option>)}
           </select>
         </Field>
       )}
