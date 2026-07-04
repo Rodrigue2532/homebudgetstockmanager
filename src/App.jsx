@@ -1643,7 +1643,7 @@ function TransactionModal({ theme, onClose, onSubmit }) {
       type, date, category,
       subcategory: "",
       amount: Number(amount),
-      comment: isRevenu ? `Revenu de ${contributor}` : (comment || category),
+      comment: isRevenu ? (contributor === "Autres" ? (comment || "Autres") : `Revenu de ${contributor}`) : (comment || category),
       contributor: isRevenu ? contributor : null,
       account: "Espèces",
     });
@@ -1666,7 +1666,7 @@ function TransactionModal({ theme, onClose, onSubmit }) {
       {isRevenu && (
         <Field label="Ajouté par">
           <div className="flex gap-2 p-1 rounded-xl bg-slate-500/10">
-            {["Rodrigue", "Liantsoa"].map((person) => (
+            {["Rodrigue", "Liantsoa", "Autres"].map((person) => (
               <button
                 key={person} type="button" onClick={() => setContributor(person)}
                 className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition ${
@@ -1677,6 +1677,12 @@ function TransactionModal({ theme, onClose, onSubmit }) {
               </button>
             ))}
           </div>
+        </Field>
+      )}
+
+      {isRevenu && contributor === "Autres" && (
+        <Field label="Commentaire">
+          <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Ex : Grand-mère, prime, remboursement..." className={inputCls(theme)} />
         </Field>
       )}
 
