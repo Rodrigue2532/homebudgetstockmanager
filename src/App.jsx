@@ -146,15 +146,29 @@ function genMovements() {
   return rows;
 }
 
+function pad2(n) { return String(n).padStart(2, "0"); }
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+function monthLabel(key) {
+  const [y, m] = key.split("-").map(Number);
+  const names = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
+  return `${names[m - 1]} ${y}`;
+}
+function lastNMonthKeys(n) {
+  const now = new Date();
+  const keys = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    keys.push(`${d.getFullYear()}-${pad2(d.getMonth() + 1)}`);
+  }
+  return keys;
+}
+
 const INITIAL_TRANSACTIONS = [];
 const INITIAL_MOVEMENTS = [];
-const CURRENT_MONTH = "2026-06";
-
-const MONTH_LABELS = {
-  "2026-01": "Jan 2026", "2026-02": "Fév 2026", "2026-03": "Mar 2026",
-  "2026-04": "Avr 2026", "2026-05": "Mai 2026", "2026-06": "Juin 2026",
-  "2026-07": "Juil 2026",
-};
+const CURRENT_MONTH = todayStr().slice(0, 7);
 
 /* ============================================================================
    HELPERS
@@ -428,9 +442,9 @@ export default function App() {
   }, [monthTx]);
 
   const monthlyTrend = useMemo(() => {
-    const keys = ["2026-04", "2026-05", "2026-06"];
+    const keys = lastNMonthKeys(3);
     return keys.map((k) => ({
-      month: MONTH_LABELS[k] || k,
+      month: monthLabel(k),
       Dépenses: monthTx(k).filter((t) => t.type === "depense").reduce((s, t) => s + t.amount, 0),
       Revenus: monthTx(k).filter((t) => t.type === "revenu").reduce((s, t) => s + t.amount, 0),
     }));
@@ -441,7 +455,7 @@ export default function App() {
   const lowStock = useMemo(() => products.filter((p) => p.currentStock > 0 && p.currentStock <= p.minStock), [products]);
 
   const consumption = useCallback((productId) => {
-    const keys = ["2026-04", "2026-05", "2026-06"];
+    const keys = lastNMonthKeys(3);
     const monthlyOut = keys.map((k) =>
       movements.filter((m) => m.productId === productId && m.type === "sortie" && monthKey(m.date) === k)
         .reduce((s, m) => s + m.quantity, 0)
@@ -779,7 +793,7 @@ function DashboardView({ theme, balance, currentMonthExpenses, budgetRemaining, 
     <div className="space-y-6">
       <div>
         <h2 className="font-display text-xl font-semibold">Bonjour Rodrigue 👋</h2>
-        <p className={`text-sm ${theme.textMuted}`}>Voici la situation de votre foyer pour Juin 2026.</p>
+        <p className={`text-sm ${theme.textMuted}`}>Voici la situation de votre foyer pour {monthLabel(CURRENT_MONTH)}.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
@@ -950,10 +964,10 @@ function FinancesView({ theme, budgetUsage, transactions, recurring, recurringDu
 
       {/* Charges récurrentes */}
       <div>
-        <h3 className="font-display font-semibold text-base mb-3">Charges récurrentes — Juin 2026</h3>
+        <h3 className="font-display font-semibold text-base mb-3">Charges récurrentes — {monthLabel(CURRENT_MONTH)}</h3>
         <div className={`rounded-2xl border ${theme.card} overflow-hidden`}>
           {recurring.map((r, i) => {
-            const paid = r.paidMonths.includes("2026-06");
+            const paid = r.paidMonths.includes(CURRENT_MONTH);
             return (
               <div key={r.id} className={`flex items-center gap-3 px-4 py-3 ${i !== recurring.length - 1 ? `border-b ${theme.border}` : ""}`}>
                 <button onClick={() => togglePaid(r.id)} className={`h-6 w-6 rounded-full border-2 flex items-center justify-center shrink-0 transition ${paid ? "bg-emerald-500 border-emerald-500" : `${theme.border}`}`}>
@@ -1179,7 +1193,7 @@ function StockView({ theme, products, movements, consumption, onStockIn, onStock
           <div className="flex items-center gap-2 mb-3">
             <CalendarDays size={16} className={theme.textMuted} />
             <select value={reportMonth} onChange={(e) => setReportMonth(e.target.value)} className={`px-3 py-2 rounded-xl border text-sm ${theme.inputBg}`}>
-              {["2026-04", "2026-05", "2026-06"].map((k) => <option key={k} value={k}>{MONTH_LABELS[k]}</option>)}
+              {lastNMonthKeys(3).map((k) => <option key={k} value={k}>{monthLabel(k)}</option>)}
             </select>
           </div>
           <div className={`rounded-2xl border overflow-hidden ${theme.card}`}>
@@ -1291,12 +1305,12 @@ function ReportsView({ theme, expensesByCategory, monthlyTrend, budgetUsage, pro
   const budgetVsSpent = budgetUsage.map((b) => ({ name: b.category, Budget: b.budget, Dépensé: b.spent }));
 
   const contributionTrend = useMemo(() => {
-    const keys = ["2026-04", "2026-05", "2026-06"];
+    const keys = lastNMonthKeys(3);
     return keys.map((k) => {
       const monthRevenues = transactions.filter((t) => t.type === "revenu" && monthKey(t.date) === k);
       const rodrigue = monthRevenues.filter((t) => t.contributor === "Rodrigue").reduce((s, t) => s + t.amount, 0);
       const liantsoa = monthRevenues.filter((t) => t.contributor === "Liantsoa").reduce((s, t) => s + t.amount, 0);
-      return { month: MONTH_LABELS[k] || k, Rodrigue: rodrigue, Liantsoa: liantsoa };
+      return { month: monthLabel(k), Rodrigue: rodrigue, Liantsoa: liantsoa };
     });
   }, [transactions]);
 
@@ -1627,7 +1641,7 @@ function SettingsView({ theme, budgets, setBudgets, isDark, setIsDark, notify, r
 
 function TransactionModal({ theme, onClose, onSubmit }) {
   const [type, setType] = useState("depense");
-  const [date, setDate] = useState("2026-06-29");
+  const [date, setDate] = useState(todayStr());
   const [category, setCategory] = useState(CATEGORY_LIST[0]);
   const [subcategory, setSubcategory] = useState(SUBCATEGORIES[CATEGORY_LIST[0]][0]);
   const [amount, setAmount] = useState("");
@@ -1706,7 +1720,7 @@ function TransactionModal({ theme, onClose, onSubmit }) {
 
 function StockInModal({ theme, products, onClose, onSubmit }) {
   const [productId, setProductId] = useState(products[0]?.id);
-  const [date, setDate] = useState("2026-06-29");
+  const [date, setDate] = useState(todayStr());
   const [quantity, setQuantity] = useState("");
   const [price, setPrice] = useState("");
 
@@ -1734,7 +1748,7 @@ function StockInModal({ theme, products, onClose, onSubmit }) {
 
 function StockOutModal({ theme, products, onClose, onSubmit }) {
   const [productId, setProductId] = useState(products[0]?.id);
-  const [date, setDate] = useState("2026-06-29");
+  const [date, setDate] = useState(todayStr());
   const [quantity, setQuantity] = useState("");
   const product = products.find((p) => p.id === productId);
 
